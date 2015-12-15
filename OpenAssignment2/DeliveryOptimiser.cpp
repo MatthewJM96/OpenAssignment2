@@ -30,17 +30,16 @@
 #define EARTH_RADIUS 3958.75
 
 /// Little helper to exit the program after a key press.
-void exitProgram(size_t code) {
+inline void exitProgram(size_t code) {
     std::cout << std::endl << "Press any key to exit..." << std::endl;
-    char tmp = _getch();
+    _getch();
     exit(code);
 }
 
 /// Collection of helper function to act on strings.
-class StringHelper {
-public:
+namespace StringHelper {
     /// Splits a string by the provided delimiter.
-    static inline unsigned int split(const std::string& txt, std::vector<std::string>& strs, char ch)
+    inline unsigned int split(const std::string& txt, std::vector<std::string>& strs, char ch)
     {
         unsigned int pos = txt.find(ch);
         unsigned int initialPos = 0;
@@ -61,26 +60,26 @@ public:
     }
 
     /// Trims a string from the left.
-    static inline std::string& ltrim(std::string& s) {
+    inline std::string& ltrim(std::string& s) {
         s.erase(s.begin(), std::find_if(s.begin(), s.end(), std::not1(std::ptr_fun<int, int>(std::isspace))));
         return s;
     }
 
     /// Trims a string from the right.
-    static inline std::string& rtrim(std::string& s) {
+    inline std::string& rtrim(std::string& s) {
         s.erase(std::find_if(s.rbegin(), s.rend(), std::not1(std::ptr_fun<int, int>(std::isspace))).base(), s.end());
         return s;
     }
 
     /// Trims a string from both ends.
-    static inline std::string& trim(std::string& s) {
+    inline std::string& trim(std::string& s) {
         return ltrim(rtrim(s));
     }
-};
+}
 
 /// Provides the number of digits for an integer value.
 template <typename T>
-int iNumberOfDigits(T number)
+inline int iNumberOfDigits(T number)
 {
     // Allows counting of integer digits of a floating-point or decimal type by static casting to largest signed integer type.
     intmax_t temp = static_cast<intmax_t>(std::round(number));
@@ -95,14 +94,15 @@ int iNumberOfDigits(T number)
 }
 
 /// Generates random values, either between min and max continuously or in steps.
-double generateRandomNumber(double min, double max) {
+inline double generateRandomNumber(double min, double max) {
     return min + (max * rand() / RAND_MAX);
 }
-double generateRandomNumber(double min, double max, unsigned int stepCount) {
+inline double generateRandomNumber(double min, double max, unsigned int stepCount) {
     return min + (rand() % (stepCount + 1) * (1.0 / stepCount) * (max - min));
 }
 
-int getIntegerFromUser(int min, int max) {
+/// Grabs an integer from the user that is valid and in the range specified.
+inline int getIntegerFromUser(int min, int max) {
     std::string line;
     int integer;
     while (std::getline(std::cin, line)) {
@@ -122,7 +122,7 @@ int getIntegerFromUser(int min, int max) {
 }
 
 /// Calculates the great circle distance between two points.
-double greatCircleDistanceRad(double lat1, double lat2, double long1, double long2, double cosLat1) {
+inline double greatCircleDistanceRad(double lat1, double lat2, double long1, double long2, double cosLat1) {
     double dLat = lat2 - lat1;
     double dLong = long2 - long1;
 
@@ -131,12 +131,12 @@ double greatCircleDistanceRad(double lat1, double lat2, double long1, double lon
 
     return c * EARTH_RADIUS;
 }
-double greatCircleDistanceRad(double lat1, double lat2, double long1, double long2) {
+inline double greatCircleDistanceRad(double lat1, double lat2, double long1, double long2) {
     double costLat1 = std::cos(lat1);
 
     return greatCircleDistanceRad(lat1, lat2, long1, long2, costLat1);
 }
-double greatCircleDistanceDeg(double lat1, double lat2, double long1, double long2) {
+inline double greatCircleDistanceDeg(double lat1, double lat2, double long1, double long2) {
     double lat1Rad = lat1 / 360.0 * 2 * PI;
     double long1Rad = long1 / 360.0 * 2 * PI;
     double lat2Rad = lat2 / 360.0 * 2 * PI;
@@ -170,7 +170,6 @@ public:
     /// Ensure file is closed and locations cleared.
     ~LocationDataModel() {
         m_file.close();
-        clearLocations();
     }
 
     /// Reads the specified file.
@@ -198,6 +197,7 @@ private:
     /// Opens the file at the currently set file path.
     /// Checks if the file is open and returns true on success, false on failure.
     bool openFile(char io = 'i') {
+        // Open in correct mode.
         if (io == 'i') {
             m_file.open(m_filePath, std::ios::in);
         } else if (io == 'o') {
@@ -335,8 +335,8 @@ private:
     /// Run hill climb algorithm returning the achieved maxima's point.
     HC_Point2D climbHill(Args... args) {
         // Generate a random starting point.
-        double x = generateRandomNumber(m_xMin, m_xMax, (m_xMax - m_xMin) / m_xStep);
-        double y = generateRandomNumber(m_yMin, m_yMax, (m_yMax - m_yMin) / m_yStep);
+        double x = generateRandomNumber(m_xMin, m_xMax, static_cast<unsigned int>((m_xMax - m_xMin) / m_xStep));
+        double y = generateRandomNumber(m_yMin, m_yMax, static_cast<unsigned int>((m_yMax - m_yMin) / m_yStep));
 
         // Get starting point's fitness.
         double currentFitness = m_fitness(x, y, args...);
@@ -354,14 +354,14 @@ private:
                     if (i == 0 && j == 0) continue;
 
                     double xCurr = x + m_xStep * i;
-                    double yCurr = y + m_yStep * i;
+                    double yCurr = y + m_yStep * j;
 
                     // Skip out of bounds cells.
                     if (xCurr > m_xMax || xCurr < m_xMin ||
                         yCurr > m_yMax || yCurr < m_yMin) continue;
 
                     // If new fitness is better than current, store the direction of the better cell, and set current fitness to the new value.
-                    double newFitness = m_fitness(x + m_xStep * i, y + m_yStep * j, args...);
+                    double newFitness = m_fitness(xCurr, yCurr, args...);
                     if (newFitness >= currentFitness) {
                         dx = i;
                         dy = j;
@@ -383,27 +383,26 @@ private:
 };
 
 /************************************************************************/
-/* Lloyd's Algorithm                                                    */
+/* K-Means Clustering Algorithm                                         */
 /************************************************************************/
 
-struct L_Point2D {
-    double x, y;
+struct KMC_Point2D {
+    double x, y, f;
     unsigned int group;
-    int foreignId;
-    int population; // Move out of L_Point
+    unsigned int foreignId;
 };
 
 template <typename... Args>
-class Lloyds2D {
+class KMeansClustering2D {
 public:
-    Lloyds2D() {}
+    KMeansClustering2D() {}
     /// Ensure function pointer is nullified.
-    ~Lloyds2D() {
+    ~KMeansClustering2D() {
         m_distanceToClusterCenter = nullptr;
     }
 
     /// Initialise a Lloyds2D object with given parameters.
-    void init(const std::vector<L_Point2D>& points, unsigned int clusterCount, double(*distanceToClusterCenter) (L_Point2D, L_Point2D, Args...)) {
+    void init(const std::vector<KMC_Point2D>& points, unsigned int clusterCount, double(*distanceToClusterCenter) (KMC_Point2D, KMC_Point2D, Args...)) {
         m_points = points;
         m_clusterCount = clusterCount;
         m_distanceToClusterCenter = distanceToClusterCenter;
@@ -411,29 +410,30 @@ public:
 
     // TODO(Matthew): Implement a multiple run count option to reduce changes of local maxima not == global maxima.
     /// Run Lloyd's algorithm, returning clusters.
-    std::vector<std::vector<L_Point2D>> run(Args... args) {
+    std::vector<std::vector<KMC_Point2D>> run(size_t accecptableChangeRate, size_t maxIterations, bool& maxIterationCountReached, Args... args) {
         if (m_clusterCount == 0) throw;
         if (m_clusterCount == 1) {
-            std::vector<std::vector<L_Point2D>> clusters;
+            std::vector<std::vector<KMC_Point2D>> clusters;
             clusters.push_back(m_points);
             return clusters;
         }
-        return lloyd(args...);
+        return kMeansClustering(accecptableChangeRate, maxIterations, maxIterationCountReached, args...);
     }
 private:
     /// Performs Lloyd's algorithm, returning the collection of clusters constructed.
-    std::vector<std::vector<L_Point2D>> lloyd(Args... args) {
-        std::vector<L_Point2D> clusterCenters;
+    std::vector<std::vector<KMC_Point2D>> kMeansClustering(size_t accecptableChangeRate, size_t maxIterations, bool& maxIterationCountReached, Args... args) {
+        std::vector<KMC_Point2D> clusterCenters;
         clusterCenters.resize(m_clusterCount);
 
         // Prepare cluster centers using the k-means++ algorithm.
         kpp(clusterCenters, args...);
 
-        int changed;
+        size_t iterations = 1;
+        unsigned int changed;
         do {
             changed = 0;
 
-            std::vector<L_Point2D> newClusterCenters;
+            std::vector<KMC_Point2D> newClusterCenters;
             std::vector<int> newClusterPointCounts;
             newClusterCenters.resize(m_clusterCount, {});
             newClusterPointCounts.resize(m_clusterCount, 0);
@@ -448,7 +448,7 @@ private:
                 // Add position to new cluster position for calculating centroid of associated cluster points.
                 newClusterCenters[m_points[i].group].x += m_points[i].x;
                 newClusterCenters[m_points[i].group].y += m_points[i].y;
-                newClusterCenters[m_points[i].group].population += m_points[i].population;
+                newClusterCenters[m_points[i].group].f += m_points[i].f;
                 ++newClusterPointCounts[m_points[i].group];
             }
 
@@ -458,9 +458,13 @@ private:
                 newClusterCenters[i].y /= newClusterPointCounts[i];
             }
             clusterCenters = newClusterCenters;
-        } while (changed > (m_points.size() >> 10)); ///< Keeps going until 99.9% of points are remaining associated with the same cluster group.
+            if (++iterations > maxIterations) {
+                maxIterationCountReached = true;
+                break;
+            }
+        } while (changed > accecptableChangeRate);
 
-        std::vector<std::vector<L_Point2D>> clusters;
+        std::vector<std::vector<KMC_Point2D>> clusters;
         clusters.resize(m_clusterCount);
         for (auto& point : m_points) {
             clusters[point.group].push_back(point);
@@ -470,12 +474,12 @@ private:
     }
 
     /// k-means++ algorithm for specifying beginning cluster centers (results in faster and better clusters).
-    void kpp(std::vector<L_Point2D>& clusterCenters, Args... args) {
+    void kpp(std::vector<KMC_Point2D>& clusterCenters, Args... args) {
         size_t preparedClusterCentersCount = 0;
 
         // Randomly select the first cluster center as an existing point.
         clusterCenters[0] = m_points[rand() % m_points.size()];
-        clusterCenters[0].population = 0;
+        clusterCenters[0].f = 0;
         ++preparedClusterCentersCount;
 
         // Repeat contents for each cluster center.
@@ -505,7 +509,7 @@ private:
                 double distNormalised = distancesSquared[j] / totalDistancesSquared;
                 if (randVal < distNormalised) {
                     clusterCenters[i] = m_points[j];
-                    clusterCenters[i].population = 0;
+                    clusterCenters[i].f = 0;
                     ++preparedClusterCentersCount;
                     break;
                 }
@@ -516,7 +520,7 @@ private:
 
     // Two separate functions for index and distance of nearest cluster center for performance-sake.
     /// Returns index of nearest cluster center to given point.
-    int nearestClusterCenter(L_Point2D point, std::vector<L_Point2D> clusterCenters, Args... args) {
+    int nearestClusterCenter(KMC_Point2D point, std::vector<KMC_Point2D> clusterCenters, Args... args) {
         int index = -1;
         double shortestDistance = std::numeric_limits<double>::max();
         for (size_t i = 0; i < clusterCenters.size(); ++i) {
@@ -529,7 +533,7 @@ private:
         return index;
     }
     /// Returns distance of nearest cluster center to given point.
-    double distanceToNearestClusterCenter(L_Point2D point, std::vector<L_Point2D> clusterCenters, Args... args) {
+    double distanceToNearestClusterCenter(KMC_Point2D point, std::vector<KMC_Point2D> clusterCenters, Args... args) {
         double shortestDistance = std::numeric_limits<double>::max();
         for (size_t i = 0; i < clusterCenters.size(); ++i) {
             double dist = m_distanceToClusterCenter(point, clusterCenters[i], args...);
@@ -541,8 +545,8 @@ private:
     }
 
     unsigned int m_clusterCount;
-    std::vector<L_Point2D> m_points;
-    double(*m_distanceToClusterCenter) (L_Point2D, L_Point2D, Args...);
+    std::vector<KMC_Point2D> m_points;
+    double(*m_distanceToClusterCenter) (KMC_Point2D, KMC_Point2D, Args...);
 };
 
 /************************************************************************/
@@ -578,10 +582,8 @@ protected:
 
 class HubLocatorScreen : public GenericTextScreen {
 public:
-    virtual HubLocatorScreen* addToBuffer(const std::string& message) {
-        m_buffer << message;
-        return this;
-    }
+    /// Include generic addToBuffer functions.
+    using GenericTextScreen::addToBuffer;
     /// Add a location to buffer for the screen.
     virtual HubLocatorScreen* addToBuffer(const Location& location) {
         m_buffer << "    Name        -  " << location.name << "\n";
@@ -632,14 +634,14 @@ public:
         m_view.addToBuffer("File read.\n\nPreparing region constructor...\n")->flush();
 
         // Construct vector of Lloyd's algorithm points.
-        std::vector<L_Point2D> lPoints;
+        std::vector<KMC_Point2D> lPoints;
         for (size_t i = 0; i < locations.size(); ++i) {
-            L_Point2D lPoint = {
+            KMC_Point2D lPoint = {
                 locations[i].latitude,
                 locations[i].longitude,
+                static_cast<double>(locations[i].population),
                 0,
                 i,
-                locations[i].population // Move out of L_Point2D
             };
             lPoints.push_back(lPoint);
         }
@@ -647,23 +649,28 @@ public:
         m_view.addToBuffer("Constructing regions...")->flush();
 
         // Run Lloyd's algorithm to obtain clusters of locations.
-        Lloyds2D<> lManager;
+        KMeansClustering2D<> lManager;
         lManager.init(lPoints, hubCount,
-            [](L_Point2D point, L_Point2D center) -> double {
-                return greatCircleDistanceDeg(point.x, center.x, point.y, center.y) * std::sqrt(center.population + point.population);
+            [](KMC_Point2D point, KMC_Point2D center) -> double {
+                return greatCircleDistanceDeg(point.x, center.x, point.y, center.y) * std::sqrt(center.f + point.f);
             }
         );
-        std::vector<std::vector<L_Point2D>> clusters = lManager.run();
+        bool maxIterationCountReached = false;
+        std::vector<std::vector<KMC_Point2D>> clusters = lManager.run(0, 10000, maxIterationCountReached);
 
         // Convert L_Point2D clusters back to collections of locations into regions.
         std::vector<std::vector<Location>> regions;
-        regions.resize(hubCount);
-        for (size_t i = 0; i < hubCount; ++i) {
-            for (auto& point : clusters[i]) {
-                regions[i].push_back(locations[point.foreignId]);
+        for (auto& cluster : clusters) {
+            if (cluster.empty()) {
+                continue;
             }
-            m_view.addToBuffer("\nRegion #" + std::to_string(i) + " constructed.\n");
-            m_view.addToBuffer(regions[i])->flush();
+            std::vector<Location> region;
+            for (auto& point : cluster) {
+                region.push_back(locations[point.foreignId]);
+            }
+            regions.push_back(region);
+            m_view.addToBuffer("\nRegion #" + std::to_string(regions.size()) + " constructed.\n");
+            m_view.addToBuffer(regions.back())->flush();
         }
 
         m_view.addToBuffer("\n\nRegions constructed.\n\nPreparing hub locators.\n\n")->flush();
@@ -686,7 +693,7 @@ public:
                         double locLatRad = it.latitude / 360.0 * 2 * PI;
                         double locLongRad = it.longitude / 360.0 * 2 * PI;
 
-                        fitness -= greatCircleDistanceRad(selfLatRad, locLatRad, selfLongRad, locLongRad, cosSelfLatRad) / it.population;
+                        fitness -= greatCircleDistanceRad(selfLatRad, locLatRad, selfLongRad, locLongRad, cosSelfLatRad) * it.population;
                     }
 
                     return fitness;
@@ -700,10 +707,18 @@ public:
             m_view.addToBuffer("Hub location calculated.\n\n");
         }
 
+        if (maxIterationCountReached) {
+            m_view.addToBuffer("\nWARNING: Max iteration count reached in region calculation, displayed hub locations may be sub-optimal.\n");
+        }
+
+        if (hubLocations.size() != hubCount) {
+            m_view.addToBuffer("\nWARNING: The number of regions constructed did not match the number requested.\n");
+        }
+
         m_view.addToBuffer("\nHub locations calculated.\n\n");
 
-        for (size_t i = 0; i < hubCount; ++i) {
-            m_view.addToBuffer("Hub #" + std::to_string(i) + ":\n");
+        for (size_t i = 0; i < hubLocations.size(); ++i) {
+            m_view.addToBuffer("Hub #" + std::to_string(i + 1) + ":\n");
             m_view.addToBuffer(hubLocations[i]);
             m_view.addToBuffer("\n");
         }
@@ -720,17 +735,18 @@ private:
 
 int main(int argc, char** argv) {
     // Seed random generator.
-    srand(time(nullptr));
+    srand(static_cast<unsigned int>(time(nullptr)));
 
-    std::cout << "How many hubs would you like to place?" << std::endl;
-    int hubCount = getIntegerFromUser(0, 1000);
+    std::cout << "Note: In the event that regions constructed do not allow for the specified number of hubs, hubs will only be placed for regions constructed." << std::endl << std::endl;
+    std::cout << "How many hubs would you like to place? (0-100):" << std::endl;
+    int hubCount = getIntegerFromUser(0, 100);
     std::cout << std::endl;
 
     HubPlacer hp;
     hp.run(hubCount, "GBplaces.csv");
 
     std::cout << std::endl << "Press any key to exit..." << std::endl;
-    char tmp = _getch();
+    _getch();
 
     return 0;
 }
